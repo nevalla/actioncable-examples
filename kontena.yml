@@ -27,8 +27,8 @@ services:
     environment:
       - RAILS_LOG_TO_STDOUT=true
       - RAILS_SERVE_STATIC_FILES=true
-      - ACTION_CABLE_URI=ws://198.211.126.43:28080
-      - ACTION_CABLE_ALLOWED_REQUEST_ORIGINS=http://198.211.126.43
+      - ACTION_CABLE_URI=ws://<dns_or_ip_address>:28080
+      - ACTION_CABLE_ALLOWED_REQUEST_ORIGINS=http://<dns_or_ip_address>
       - REDIS_URL=redis://redis:6379
       - DATABASE_URL=postgresql://postgres@postgres/action_cable_examples_production?pool=5
       - KONTENA_LB_INTERNAL_PORT=3000
@@ -59,7 +59,7 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - DATABASE_URL=postgresql://postgres@postgres/action_cable_examples_production?pool=5
-      - ACTION_CABLE_ALLOWED_REQUEST_ORIGINS=http://198.211.126.43
+      - ACTION_CABLE_ALLOWED_REQUEST_ORIGINS=http://<dns_or_ip_address>
       - RAILS_LOG_TO_STDOUT=true
     secrets:
       - secret: ${STACK}_secret_key_base
