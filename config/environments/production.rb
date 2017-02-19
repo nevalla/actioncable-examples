@@ -72,9 +72,17 @@ Rails.application.configure do
   # Use default logging formatter so that PID and timestamp are not suppressed.
   config.log_formatter = ::Logger::Formatter.new
 
+  if ENV["RAILS_LOG_TO_STDOUT"].present?
+    logger           = ActiveSupport::Logger.new(STDOUT)
+    logger.formatter = config.log_formatter
+    config.logger = ActiveSupport::TaggedLogging.new(logger)
+  end
+
   # Do not dump schema after migrations.
   config.active_record.dump_schema_after_migration = false
 
   # Set Action Cable server url for consumer connection
-  # config.action_cable.url = 'ws://cable.example.com:28080'
+  config.action_cable.url = ENV["ACTION_CABLE_URI"]
+
+  config.action_cable.allowed_request_origins = ENV["ACTION_CABLE_ALLOWED_REQUEST_ORIGINS"].split(",")
 end

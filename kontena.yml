@@ -1,0 +1,94 @@
+stack: kontena/rails-actioncable
+version: 0.1.0
+variables:
+  secret_key_base:
+    type: string
+    from: # where to obtain a value for this variable
+      vault: ${STACK}_secret_key_base # try to get a value from the vault on kontena master
+      random_string: 56
+    to:
+      vault: ${STACK}_secret_key_base
+
+services:
+  internet-lb:
+    image: kontena/lb:latest
+    ports:
+      - 80:80
+
+  postgres:
+    image: postgres:alpine
+    stateful: true
+    environment:
+      - POSTGRES_DB=action_cable_examples_production
+  web:
+    build: .
+    image: registry.test.kontena.local/actioncable-examples:latest
+    command: ./bin/rails s
+    environment:
+      - RAILS_LOG_TO_STDOUT=true
+      - RAILS_SERVE_STATIC_FILES=true
+      - ACTION_CABLE_URI=ws://198.211.126.43:28080
+      - ACTION_CABLE_ALLOWED_REQUEST_ORIGINS=http://198.211.126.43
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres@postgres/action_cable_examples_production?pool=5
+      - KONTENA_LB_INTERNAL_PORT=3000
+      - KONTENA_LB_VIRTUAL_PATH=/
+    secrets:
+      - secret: ${STACK}_secret_key_base
+        name: SECRET_KEY_BASE
+        type: env
+    hooks:
+      post_start:
+        - name: db_setup
+          cmd: ./bin/rake db:setup
+          instances: 1
+          oneshot: true
+          instances: 1
+          oneshot: true
+        - name: db_migrate
+          cmd: ./bin/rake db:migrate
+          instances: 1
+    links:
+      - internet-lb
+    volumes:
+      - assets:/app/public
+
+  cable:
+    image: registry.test.kontena.local/actioncable-examples:latest
+    command: ./bin/cable
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres@postgres/action_cable_examples_production?pool=5
+      - ACTION_CABLE_ALLOWED_REQUEST_ORIGINS=http://198.211.126.43
+      - RAILS_LOG_TO_STDOUT=true
+    secrets:
+      - secret: ${STACK}_secret_key_base
+        name: SECRET_KEY_BASE
+        type: env
+    ports:
+      - 28080:28080
+    depends_on:
+      - redis
+      - web
+
+  assets:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    image: registry.test.kontena.local/actioncable-examples-nginx:latest
+    volumes:
+      - assets:/usr/share/nginx/html
+    links:
+      - internet-lb
+    depends_on:
+      - web
+    affinity:
+      - service==web
+    environment:
+      - KONTENA_LB_INTERNAL_PORT=80
+      - KONTENA_LB_VIRTUAL_PATH=/assets
+      - KONTENA_LB_KEEP_VIRTUAL_PATH=true
+
+  redis:
+    image: redis:latest
+    stateful: true
